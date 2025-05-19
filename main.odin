@@ -35,7 +35,7 @@ main :: proc() {
 		line := lines[col - 1]
 		log.fatalf("./%s:%d:%d: %s", input_name, col, row, tokenizer_error.msg_fmt)
 		log.fatal(line)
-		log.fatalf("%.*s ^", row + 1, " ")
+		log.fatalf("%*s^", row - 1, " ")
 		return
 	}
 	log.debug(ts)
