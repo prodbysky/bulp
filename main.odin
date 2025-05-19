@@ -47,7 +47,7 @@ read_file :: proc(name: string) -> (string, bool) {
 		log.fatalf("Failed to either read or open the provided file")
 		return "", true
 	}
-	return strings.clone_from_bytes(content), false
+	return transmute(string)content, false
 }
 
 usage :: proc(program_name: string) {

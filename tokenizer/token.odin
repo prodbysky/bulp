@@ -2,6 +2,11 @@ package tokenizer
 
 TokenType :: enum {
 	Number,
+	BinaryOperator,
+}
+
+BinaryOperator :: enum {
+	Plus,
 }
 
 Token :: struct {
@@ -9,5 +14,6 @@ Token :: struct {
 	loc:   int,
 	value: union {
 		u64,
+		BinaryOperator,
 	},
 }

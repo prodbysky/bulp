@@ -2,6 +2,7 @@ package tokenizer
 
 import "core:log"
 import "core:strconv"
+import "core:strings"
 import "core:unicode"
 
 Tokenizer :: struct {
@@ -25,6 +26,12 @@ run :: proc(tkn: ^Tokenizer) -> ([dynamic]Token, Error) {
 			if err.offset != -1 do return tokens, err
 			append(&tokens, t)
 		}
+		if strings.contains_rune("+", peek(tkn)) {
+			t, err := lex_operator(tkn)
+			if err.offset != -1 do return tokens, err
+			append(&tokens, t)
+
+		}
 	}
 	return tokens, Error{offset = -1}
 }
@@ -45,6 +52,27 @@ lex_number :: proc(tkn: ^Tokenizer) -> (Token, Error) {
 	number, _ := strconv.parse_u64_of_base(tkn.source[t.loc:tkn.loc], 10)
 	t.value = number
 	return t, Error{offset = -1}
+}
+
+lex_operator :: proc(tkn: ^Tokenizer) -> (Token, Error) {
+	t := Token{}
+	switch peek(tkn) {
+	case '+':
+		{
+			next(tkn)
+			return Token {
+				type = .BinaryOperator,
+				value = .Plus,
+				loc = tkn.loc - 1,
+			}, Error{offset = -1}
+		}
+	case:
+		return t, Error {
+			offset = cast(i64)tkn.loc,
+			msg_fmt = "unexpected char found when parsing operators: %v",
+			args = {peek(tkn)},
+		}
+	}
 }
 
 finished :: proc(tkn: ^Tokenizer) -> bool {
