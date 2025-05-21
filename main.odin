@@ -2,11 +2,13 @@ package main
 
 import "core:fmt"
 import "core:log"
+import "core:mem"
 import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:unicode"
 
+import "parser"
 import "tokenizer"
 
 logger := log.create_console_logger(opt = {.Terminal_Color})
@@ -38,8 +40,16 @@ main :: proc() {
 		log.fatalf("%*s^", row - 1, " ")
 		return
 	}
-	log.debug(ts)
+
+	arena_backing_data := [1024 * 10]u8{}
+	arena := mem.Arena{}
+	mem.arena_init(&arena, arena_backing_data[:])
+
+	sliced := ts[:]
+	prim_expr, _ := parser.parse_ast(&sliced, &arena)
+	log.debug(prim_expr)
 }
+
 
 read_file :: proc(name: string) -> (string, bool) {
 	content, err := os.read_entire_file(name)
