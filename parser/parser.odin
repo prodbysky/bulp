@@ -30,6 +30,9 @@ parse_statement :: proc(tokens: ^[]tokenizer.Token, arena: ^mem.Arena) -> (State
 		value, expr_err := parse_expr(tokens, 0, arena)
 		if expr_err.offset != -1 do return Statement{}, expr_err
 		tokens^ = tokens[1:] // ';'
+		st.st = Return {
+			e = value,
+		}
 		return st, Error{offset = -1}
 	}
 	return st, Error{offset = -1}
