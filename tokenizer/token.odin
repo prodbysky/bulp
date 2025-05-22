@@ -8,6 +8,8 @@ TokenType :: enum {
 BinaryOperator :: enum {
 	Plus,
 	Minus,
+	Mult,
+	Div,
 }
 
 Token :: struct {
