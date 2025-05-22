@@ -21,10 +21,20 @@ run :: proc(tkn: ^Tokenizer) -> ([dynamic]Token, Error) {
 	for !finished(tkn) {
 		skip_while(tkn, unicode.is_white_space)
 		if finished(tkn) do break
+
 		if unicode.is_digit(peek(tkn)) {
 			t, err := lex_number(tkn)
 			if err.offset != -1 do return tokens, err
 			append(&tokens, t)
+		}
+		if unicode.is_alpha(peek(tkn)) {
+			loc := tkn.loc
+			for !finished(tkn) && (unicode.is_alpha(peek(tkn)) || unicode.is_number(peek(tkn)) || peek(tkn) == '_') do next(tkn)
+			if tkn.source[loc:tkn.loc] == "return" {
+				append(&tokens, Token{loc = loc, type = .Keyword, value = .Return})
+			} else {
+				return nil, Error{offset = cast(i64)loc, msg_fmt = "unexpected identifier found"}
+			}
 		}
 		if peek(tkn) == '(' {
 			append(&tokens, Token{loc = tkn.loc, type = .OpenParen})
@@ -32,6 +42,10 @@ run :: proc(tkn: ^Tokenizer) -> ([dynamic]Token, Error) {
 		}
 		if peek(tkn) == ')' {
 			append(&tokens, Token{loc = tkn.loc, type = .CloseParen})
+			next(tkn)
+		}
+		if peek(tkn) == ';' {
+			append(&tokens, Token{loc = tkn.loc, type = .Semicolon})
 			next(tkn)
 		}
 		if strings.contains_rune("+-*/", peek(tkn)) {

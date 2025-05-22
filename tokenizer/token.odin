@@ -5,7 +5,15 @@ TokenType :: enum {
 	BinaryOperator,
 	OpenParen,
 	CloseParen,
+	Semicolon,
+	Keyword,
 }
+
+
+KeywordType :: enum {
+	Return,
+}
+
 
 BinaryOperator :: enum {
 	Plus,
@@ -20,5 +28,6 @@ Token :: struct {
 	value: union {
 		u64,
 		BinaryOperator,
+		KeywordType,
 	},
 }

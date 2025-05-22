@@ -13,6 +13,7 @@ good_numbers :: proc(t: ^testing.T) {
 		loc    = 0,
 	}
 	tokens, err := tokenizer.run(&tkn)
+	defer delete(tokens)
 	testing.expect_value(t, err.offset, -1)
 	testing.expect_value(t, len(tokens), 2)
 	testing.expect_value(t, tokens[0], tokenizer.Token{value = 123, type = .Number, loc = 0})
@@ -27,6 +28,7 @@ grr_bad_numbers :: proc(t: ^testing.T) {
 		loc    = 0,
 	}
 	tokens, err := tokenizer.run(&tkn)
+	defer delete(tokens)
 	testing.expect_value(t, err.offset, 6)
 }
 
@@ -38,6 +40,7 @@ operators :: proc(t: ^testing.T) {
 		loc    = 0,
 	}
 	tokens, err := tokenizer.run(&tkn)
+	defer delete(tokens)
 	testing.expect_value(t, err.offset, -1)
 	testing.expect_value(t, len(tokens), 2)
 	testing.expect_value(
@@ -50,4 +53,18 @@ operators :: proc(t: ^testing.T) {
 		tokens[1],
 		tokenizer.Token{value = .Plus, type = .BinaryOperator, loc = 2},
 	)
+}
+
+@(test)
+keyword :: proc(t: ^testing.T) {
+	SOURCE :: "return\n"
+	tkn := tokenizer.Tokenizer {
+		source = SOURCE,
+		loc    = 0,
+	}
+	tokens, err := tokenizer.run(&tkn)
+	defer delete(tokens)
+	testing.expect_value(t, err.offset, -1)
+	testing.expect_value(t, len(tokens), 1)
+	testing.expect_value(t, tokens[0], tokenizer.Token{value = .Return, type = .Keyword, loc = 0})
 }

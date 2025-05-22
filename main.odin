@@ -50,6 +50,7 @@ main :: proc() {
 	}
 	print_ast(prim_expr)
 }
+
 print_ast :: proc(node: parser.Node, indent: int = 0) {
 	for i in 0 ..< indent do fmt.print("  ")
 

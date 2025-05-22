@@ -4,56 +4,45 @@ import "../tokenizer"
 import "core:fmt"
 import "core:mem"
 
-NodeType :: enum {
-	BinaryExpr,
-	Number,
-}
 
-Node :: struct {
-	loc:   u64,
-	type:  NodeType,
-	value: union {
-		u64,
-		BinaryExpr,
-	},
-}
-BinaryExpr :: struct {
-	left:  ^Node,
-	op:    tokenizer.BinaryOperator,
-	right: ^Node,
-}
-
-
-Error :: struct {
-	offset:  i64,
-	msg_fmt: string,
-	args:    []any,
-}
-
-EMPTY :: Node{}
-
-parse_ast :: proc(tokens: ^[]tokenizer.Token, arena: ^mem.Arena) -> (Node, Error) {
+parse_ast :: proc(tokens: ^[]tokenizer.Token, arena: ^mem.Arena) -> ([dynamic]Statement, Error) {
 	if len(tokens^) == 0 {
 		return {}, Error{offset = 0, msg_fmt = "empty token stream"}
 	}
 
-	node, err := parse_expr(tokens, 0, arena)
-	if err.offset != -1 {
-		return {}, err
+	sts := make([dynamic]Statement, 0, 10)
+
+	for len(tokens) > 0 {
+		st, err := parse_statement(tokens, arena)
+		if err.offset != -1 do return sts, err
+		append(&sts, st)
 	}
 
-	if len(tokens^) > 0 {
-		return EMPTY, Error {
-			offset = cast(i64)tokens^[0].loc,
-			msg_fmt = "unexpected token at end of expression",
-			args = {tokens^[0]},
-		}
-	}
-
-	return node^, err
+	return sts, Error{offset = -1}
 }
 
-parse_expr :: proc(tokens: ^[]tokenizer.Token, prec: int, arena: ^mem.Arena) -> (^Node, Error) {
+parse_statement :: proc(tokens: ^[]tokenizer.Token, arena: ^mem.Arena) -> (Statement, Error) {
+	st := Statement{}
+	if tokens[0].value == .Return {
+		st.loc = cast(u64)tokens[0].loc
+		st.st_type = .Return
+		tokens^ = tokens[1:]
+		value, expr_err := parse_expr(tokens, 0, arena)
+		if expr_err.offset != -1 do return Statement{}, expr_err
+		tokens^ = tokens[1:] // ';'
+		return st, Error{offset = -1}
+	}
+	return st, Error{offset = -1}
+}
+
+parse_expr :: proc(
+	tokens: ^[]tokenizer.Token,
+	prec: int,
+	arena: ^mem.Arena,
+) -> (
+	^Expression,
+	Error,
+) {
 	left, err := parse_primary(tokens, arena)
 	if err.offset != -1 {
 		return nil, err
@@ -71,9 +60,9 @@ parse_expr :: proc(tokens: ^[]tokenizer.Token, prec: int, arena: ^mem.Arena) -> 
 			return nil, right_err
 		}
 
-		ptr, _ := mem.arena_alloc(arena, size_of(Node))
-		new_left := cast(^Node)ptr
-		new_left^ = Node {
+		ptr, _ := mem.arena_alloc(arena, size_of(Expression))
+		new_left := cast(^Expression)ptr
+		new_left^ = Expression {
 			type = .BinaryExpr,
 			loc = left.loc,
 			value = BinaryExpr {
@@ -88,7 +77,7 @@ parse_expr :: proc(tokens: ^[]tokenizer.Token, prec: int, arena: ^mem.Arena) -> 
 	return left, Error{offset = -1}
 }
 
-parse_primary :: proc(tokens: ^[]tokenizer.Token, arena: ^mem.Arena) -> (^Node, Error) {
+parse_primary :: proc(tokens: ^[]tokenizer.Token, arena: ^mem.Arena) -> (^Expression, Error) {
 	if len(tokens^) == 0 {
 		return nil, Error {
 			offset = 0,
@@ -96,8 +85,8 @@ parse_primary :: proc(tokens: ^[]tokenizer.Token, arena: ^mem.Arena) -> (^Node, 
 		}
 	}
 
-	ptr, _ := mem.arena_alloc(arena, size_of(Node))
-	node := cast(^Node)ptr
+	ptr, _ := mem.arena_alloc(arena, size_of(Expression))
+	node := cast(^Expression)ptr
 
 	switch tokens[0].type {
 	case .Number:
@@ -125,6 +114,10 @@ parse_primary :: proc(tokens: ^[]tokenizer.Token, arena: ^mem.Arena) -> (^Node, 
 		}
 	case .CloseParen:
 		{fallthrough}
+	case .Keyword:
+		{fallthrough}
+	case .Semicolon:
+		{fallthrough}
 	case:
 		return nil, Error {
 			offset = cast(i64)tokens^[0].loc,
@@ -147,3 +140,45 @@ operator_prec :: proc(op: tokenizer.BinaryOperator) -> int {
 	}
 	return -1
 }
+
+StatementType :: enum {
+	Return,
+}
+Statement :: struct {
+	loc:     u64,
+	st_type: StatementType,
+	st:      union {
+		Return,
+	},
+}
+
+Return :: struct {
+	e: ^Expression,
+}
+
+ExpressionType :: enum {
+	BinaryExpr,
+	Number,
+}
+
+Expression :: struct {
+	loc:   u64,
+	type:  ExpressionType,
+	value: union {
+		u64,
+		BinaryExpr,
+	},
+}
+BinaryExpr :: struct {
+	left:  ^Expression,
+	op:    tokenizer.BinaryOperator,
+	right: ^Expression,
+}
+
+Error :: struct {
+	offset:  i64,
+	msg_fmt: string,
+	args:    []any,
+}
+
+EMPTY_EXPR :: Expression{}
