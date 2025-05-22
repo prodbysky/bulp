@@ -104,20 +104,27 @@ parse_primary :: proc(tokens: ^[]tokenizer.Token, arena: ^mem.Arena) -> (^Node, 
 		{
 			t := tokens[0]
 			tokens^ = tokens[1:]
-
 			node.type = .Number
 			node.value = t.value.(u64)
 			node.loc = cast(u64)t.loc
 			return node, Error{offset = -1}
 		}
-
 	case .BinaryOperator:
 		return nil, Error {
 			offset = cast(i64)tokens^[0].loc,
 			msg_fmt = "expected number, found operator",
 			args = {tokens[0].value},
 		}
-
+	case .OpenParen:
+		{
+			tokens^ = tokens[1:]
+			inner, err := parse_expr(tokens, 0, arena)
+			if err.offset != -1 do return nil, err
+			tokens^ = tokens[1:]
+			return inner, Error{offset = -1}
+		}
+	case .CloseParen:
+		{fallthrough}
 	case:
 		return nil, Error {
 			offset = cast(i64)tokens^[0].loc,

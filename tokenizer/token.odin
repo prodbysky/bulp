@@ -3,6 +3,8 @@ package tokenizer
 TokenType :: enum {
 	Number,
 	BinaryOperator,
+	OpenParen,
+	CloseParen,
 }
 
 BinaryOperator :: enum {

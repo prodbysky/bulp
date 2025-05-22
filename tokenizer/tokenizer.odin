@@ -26,6 +26,14 @@ run :: proc(tkn: ^Tokenizer) -> ([dynamic]Token, Error) {
 			if err.offset != -1 do return tokens, err
 			append(&tokens, t)
 		}
+		if peek(tkn) == '(' {
+			append(&tokens, Token{loc = tkn.loc, type = .OpenParen})
+			next(tkn)
+		}
+		if peek(tkn) == ')' {
+			append(&tokens, Token{loc = tkn.loc, type = .CloseParen})
+			next(tkn)
+		}
 		if strings.contains_rune("+-*/", peek(tkn)) {
 			t, err := lex_operator(tkn)
 			if err.offset != -1 do return tokens, err
