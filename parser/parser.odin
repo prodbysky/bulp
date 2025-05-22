@@ -30,21 +30,52 @@ Error :: struct {
 	args:    []any,
 }
 
+EMPTY :: Node{}
+
 parse_ast :: proc(tokens: ^[]tokenizer.Token, arena: ^mem.Arena) -> (Node, Error) {
-	node, e := parse_expr(tokens, 0, arena)
-	return node^, e
+	if len(tokens^) == 0 {
+		return {}, Error{offset = 0, msg_fmt = "empty token stream"}
+	}
+
+	node, err := parse_expr(tokens, 0, arena)
+	if err.offset != -1 {
+		return {}, err
+	}
+
+	// Make sure we consumed all tokens
+	if len(tokens^) > 0 {
+		return EMPTY, Error {
+			offset = cast(i64)tokens^[0].loc,
+			msg_fmt = "unexpected token at end of expression",
+			args = {tokens^[0]},
+		}
+	}
+
+	return node^, err
 }
 
 parse_expr :: proc(tokens: ^[]tokenizer.Token, prec: int, arena: ^mem.Arena) -> (^Node, Error) {
 	left, err := parse_primary(tokens, arena)
-	for len(tokens) > 0 {
-		t := tokens[0]
+	if err.offset != -1 {
+		return nil, err
+	}
+
+	for len(tokens^) > 0 {
+		t := tokens^[0]
 		if t.type != .BinaryOperator do break
+
 		t_prec := operator_prec(t.value.(tokenizer.BinaryOperator))
 		if t_prec < prec do break
-		tokens^ = tokens[1:]
-		right, err := parse_expr(tokens, t_prec + 1, arena)
 
+		// Consume the operator token
+		tokens^ = tokens^[1:]
+
+		right, right_err := parse_expr(tokens, t_prec + 1, arena)
+		if right_err.offset != -1 {
+			return nil, right_err
+		}
+
+		// Allocate new node for binary expression
 		ptr, _ := mem.arena_alloc(arena, size_of(Node))
 		new_left := cast(^Node)ptr
 		new_left^ = Node {
@@ -57,31 +88,47 @@ parse_expr :: proc(tokens: ^[]tokenizer.Token, prec: int, arena: ^mem.Arena) -> 
 			},
 		}
 		left = new_left
-
 	}
-	return left, err
+
+	return left, Error{offset = -1}
 }
 
 parse_primary :: proc(tokens: ^[]tokenizer.Token, arena: ^mem.Arena) -> (^Node, Error) {
+	if len(tokens^) == 0 {
+		return nil, Error {
+			offset = 0,
+			msg_fmt = "unexpected end of input when parsing primary expression",
+		}
+	}
+
 	ptr, _ := mem.arena_alloc(arena, size_of(Node))
 	node := cast(^Node)ptr
-	switch tokens[0].type {
+
+	switch tokens^[0].type {
 	case .Number:
 		{
-			t := tokens[0]
-			tokens^ = tokens[1:]
+			t := tokens^[0]
+			tokens^ = tokens^[1:]
+
 			node.type = .Number
 			node.value = t.value.(u64)
 			node.loc = cast(u64)t.loc
+
 			return node, Error{offset = -1}
 		}
+
 	case .BinaryOperator:
-		{fallthrough}
+		return nil, Error {
+			offset = cast(i64)tokens^[0].loc,
+			msg_fmt = "expected number, found operator",
+			args = {tokens^[0].value},
+		}
+
 	case:
-		return node, Error {
-			offset = cast(i64)tokens[0].loc,
-			msg_fmt = "unexpected token found when parsing a primary expression: %v",
-			args = {tokens[0]},
+		return nil, Error {
+			offset = cast(i64)tokens^[0].loc,
+			msg_fmt = "unexpected token found when parsing a primary expression",
+			args = {tokens^[0]},
 		}
 	}
 }
@@ -89,6 +136,8 @@ parse_primary :: proc(tokens: ^[]tokenizer.Token, arena: ^mem.Arena) -> (^Node, 
 operator_prec :: proc(op: tokenizer.BinaryOperator) -> int {
 	switch op {
 	case .Plus:
+		return 1
+	case .Minus:
 		return 1
 	}
 	return -1

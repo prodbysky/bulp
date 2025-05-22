@@ -26,7 +26,7 @@ run :: proc(tkn: ^Tokenizer) -> ([dynamic]Token, Error) {
 			if err.offset != -1 do return tokens, err
 			append(&tokens, t)
 		}
-		if strings.contains_rune("+", peek(tkn)) {
+		if strings.contains_rune("+-", peek(tkn)) {
 			t, err := lex_operator(tkn)
 			if err.offset != -1 do return tokens, err
 			append(&tokens, t)
@@ -63,6 +63,15 @@ lex_operator :: proc(tkn: ^Tokenizer) -> (Token, Error) {
 			return Token {
 				type = .BinaryOperator,
 				value = .Plus,
+				loc = tkn.loc - 1,
+			}, Error{offset = -1}
+		}
+	case '-':
+		{
+			next(tkn)
+			return Token {
+				type = .BinaryOperator,
+				value = .Minus,
 				loc = tkn.loc - 1,
 			}, Error{offset = -1}
 		}

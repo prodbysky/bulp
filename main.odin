@@ -18,36 +18,46 @@ main :: proc() {
 	context.logger = logger
 	program_name := shift_args(&args).?
 	input_name := shift_args(&args)
-
 	if input_name == nil {
 		usage(program_name)
 		return
 	}
-
 	source, err := read_file(input_name.?)
 	if err do return
+	defer delete(source)
 	tkn := tokenizer.Tokenizer {
 		source = source,
-		loc    = 0,
 	}
 	ts, tokenizer_error := tokenizer.run(&tkn)
 	if tokenizer_error.offset != -1 {
 		col, row := offset_to_row_col(source, cast(int)tokenizer_error.offset)
-		lines, err := strings.split_lines(source)
-		line := lines[col - 1]
-		log.fatalf("./%s:%d:%d: %s", input_name, col, row, tokenizer_error.msg_fmt)
-		log.fatal(line)
-		log.fatalf("%*s^", row - 1, " ")
+		display_error(input_name.?, source, col, row, tokenizer_error.msg_fmt)
 		return
 	}
+	defer delete(ts)
 
 	arena_backing_data := [1024 * 10]u8{}
 	arena := mem.Arena{}
 	mem.arena_init(&arena, arena_backing_data[:])
+	defer mem.arena_free_all(&arena)
 
 	sliced := ts[:]
-	prim_expr, _ := parser.parse_ast(&sliced, &arena)
+	prim_expr, parser_err := parser.parse_ast(&sliced, &arena)
+	if parser_err.offset != -1 {
+		col, row := offset_to_row_col(source, cast(int)parser_err.offset)
+		display_error(input_name.?, source, col, row, parser_err.msg_fmt)
+		return
+	}
 	log.debug(prim_expr)
+}
+
+display_error :: proc(source_name: string, source: string, col, row: int, msg: string) {
+	lines, err := strings.split_lines(source)
+	defer delete(lines)
+	line := lines[col - 1]
+	log.fatalf("./%s:%d:%d: %s", source_name, col, row, msg)
+	log.fatal(line)
+	log.fatalf("%*s^", row - 1, " ")
 }
 
 

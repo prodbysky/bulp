@@ -7,6 +7,7 @@ TokenType :: enum {
 
 BinaryOperator :: enum {
 	Plus,
+	Minus,
 }
 
 Token :: struct {
