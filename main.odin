@@ -31,7 +31,7 @@ main :: proc() {
 	ts, tokenizer_error := tokenizer.run(&tkn)
 	if tokenizer_error.offset != -1 {
 		col, row := offset_to_row_col(source, cast(int)tokenizer_error.offset)
-		display_error(input_name.?, source, col, row, tokenizer_error.msg_fmt)
+		display_error(input_name.?, source, col, row, tokenizer.error_to_string(tokenizer_error))
 		return
 	}
 	defer delete(ts)
@@ -51,7 +51,6 @@ main :: proc() {
 	}
 	log.debug(ast)
 }
-
 
 display_error :: proc(source_name: string, source: string, col, row: int, msg: string) {
 	lines, err := strings.split_lines(source)
