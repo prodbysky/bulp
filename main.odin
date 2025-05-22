@@ -48,8 +48,22 @@ main :: proc() {
 		display_error(input_name.?, source, col, row, parser_err.msg_fmt)
 		return
 	}
-	log.debug(prim_expr)
+	print_ast(prim_expr)
 }
+print_ast :: proc(node: parser.Node, indent: int = 0) {
+	for i in 0 ..< indent do fmt.print("  ")
+
+	switch node.type {
+	case .Number:
+		fmt.printf("Number: %v\n", node.value.(u64))
+	case .BinaryExpr:
+		expr := node.value.(parser.BinaryExpr)
+		fmt.printf("BinaryExpr: %v\n", expr.op)
+		print_ast(expr.left^, indent + 1)
+		print_ast(expr.right^, indent + 1)
+	}
+}
+
 
 display_error :: proc(source_name: string, source: string, col, row: int, msg: string) {
 	lines, err := strings.split_lines(source)
